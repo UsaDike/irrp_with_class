@@ -64,15 +64,31 @@ import pigpio  # http://abyz.co.uk/rpi/pigpio/python.html
 
 
 class IRRP3:
-    def __init__(self):
-        self.last_tick = 0
-        self.in_code = False
-        self.code = []
-        self.fetching_code = False
+    def __init__(self, gpio, filename,
+                 freq=38.0,
+                 gap=100, glitch=100, post=15, pre=200, short=10, tolerance=15,
+                 verbose=False, no_confirm=False):
+
+        self.GPIO = gpio
+        self.FILE = filename
+
+        self.FREQ = freq
+
+        self.GAP_MS = gap
+        self.GLITCH = glitch
+        self.POST_MS = post
+        self.PRE_MS = pre
+        self.SHORT = short
+        self.TOLERANCE = tolerance
+
+        self.VERBOSE = verbose
+        self.NO_CONFIRM = no_confirm
+
+        self.additional_calculation()
 
     def with_argument(self):
-        self.get_argument()
-        self.rec_or_ply()
+        is_record, identification = self.get_argument()
+        self.rec_or_ply(is_record, identification)
 
     def get_argument(self):
         p = argparse.ArgumentParser()
@@ -123,10 +139,13 @@ class IRRP3:
         self.GAP_MS = args.gap
         self.NO_CONFIRM = args.no_confirm
         self.TOLERANCE = args.tolerance
-        # self.PLAY  # No value
-        self.RECORD = args.record
-        self.ID = args.id
+        identification = args.id
         self.additional_calculation()
+        if args.record:  # Record mode
+            is_record = True
+        else:  # Play mode
+            is_record = False
+        return is_record, identification
 
     def additional_calculation(self):
         self.POST_US = self.POST_MS * 1000
@@ -384,24 +403,24 @@ class IRRP3:
                 self.in_code = False
                 self.end_of_code()
 
-    def rec_or_ply(self):
-        if self.RECORD:
-            self.record()
+    def rec_or_ply(self, is_record, identification):
+        if is_record:
+            self.record(identification=identification)
         else:
-            self.playback()
+            self.playback(identification=identification)
 
     def pigpio_for_rcd_ply(func):
         def wrapper(self, *args, **kwargs):
             self.pi = pigpio.pi()  # Connect to Pi.
             if not self.pi.connected:
                 exit(0)
-            res = func(self, self.pi, *args, **kwargs)
+            res = func(self, pi=self.pi, *args, **kwargs)
             self.pi.stop()  # Disconnect from Pi.
             return res
         return wrapper
 
     @pigpio_for_rcd_ply
-    def record(self, pi):
+    def record(self, pi, identification):
         try:
             f = open(self.FILE, "r")
             records = json.load(f)
@@ -418,7 +437,7 @@ class IRRP3:
         # Process each id
 
         print("Recording")
-        for arg in self.ID:
+        for arg in identification:
             print("Press key for '{}'".format(arg))
             self.code = []
             self.fetching_code = True
@@ -468,7 +487,7 @@ class IRRP3:
         f.close()
 
     @pigpio_for_rcd_ply
-    def playback(self, pi):
+    def playback(self, pi, identification):
         try:
             f = open(self.FILE, "r")
         except FileNotFoundError:
@@ -488,7 +507,7 @@ class IRRP3:
         if self.VERBOSE:
             print("Playing")
 
-        for arg in self.ID:
+        for arg in identification:
             if arg in records:
 
                 self.code = records[arg]
