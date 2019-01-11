@@ -63,7 +63,7 @@ import argparse
 import pigpio  # http://abyz.co.uk/rpi/pigpio/python.html
 
 
-class IRRP3:
+class IRRP:
     def __init__(self, gpio, filename,
                  freq=38.0,
                  gap=100, glitch=100, post=15, pre=200, short=10, tolerance=15,
@@ -569,5 +569,5 @@ class IRRP3:
 
 
 if __name__ == "__main__":
-    irrp3 = IRRP3(gpio=None, filename=None)
-    irrp3.with_argument()
+    irrp = IRRP(gpio=None, filename=None)
+    irrp.with_argument()
