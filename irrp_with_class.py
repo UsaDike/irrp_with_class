@@ -86,6 +86,11 @@ class IRRP3:
 
         self.additional_calculation()
 
+        self.last_tick = 0
+        self.in_code = False
+        self.code = []
+        self.fetching_code = False
+
     def with_argument(self):
         is_record, identification = self.get_argument()
         self.rec_or_ply(is_record, identification)
@@ -562,5 +567,5 @@ class IRRP3:
 
 
 if __name__ == "__main__":
-    irrp3 = IRRP3()
+    irrp3 = IRRP3(gpio=None, filename=None)
     irrp3.with_argument()
