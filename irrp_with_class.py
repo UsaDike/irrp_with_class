@@ -430,7 +430,7 @@ class IRRP:
             exit(0)
         elif type(identification) == str:
             identification = [identification]
-        
+
         try:
             f = open(self.FILE, "r")
             records = json.load(f)
@@ -501,6 +501,7 @@ class IRRP:
     def playback(self, identification):
         if type(identification) == str:
             identification = [identification]
+
         try:
             f = open(self.FILE, "r")
         except FileNotFoundError:
