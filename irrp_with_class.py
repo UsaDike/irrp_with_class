@@ -426,6 +426,11 @@ class IRRP:
 
     @pigpio_for_rcd_ply
     def record(self, identification):
+        if identification == "":
+            exit(0)
+        elif type(identification) == str:
+            identification = [identification]
+        
         try:
             f = open(self.FILE, "r")
             records = json.load(f)
@@ -494,6 +499,8 @@ class IRRP:
 
     @pigpio_for_rcd_ply
     def playback(self, identification):
+        if type(identification) == str:
+            identification = [identification]
         try:
             f = open(self.FILE, "r")
         except FileNotFoundError:
