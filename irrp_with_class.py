@@ -419,13 +419,13 @@ class IRRP3:
             self.pi = pigpio.pi()  # Connect to Pi.
             if not self.pi.connected:
                 exit(0)
-            res = func(self, pi=self.pi, *args, **kwargs)
+            res = func(self, *args, **kwargs)
             self.pi.stop()  # Disconnect from Pi.
             return res
         return wrapper
 
     @pigpio_for_rcd_ply
-    def record(self, pi, identification):
+    def record(self, identification):
         try:
             f = open(self.FILE, "r")
             records = json.load(f)
@@ -433,11 +433,12 @@ class IRRP3:
         except FileNotFoundError:
             records = {}
 
-        pi.set_mode(self.GPIO, pigpio.INPUT)  # IR RX connected to this GPIO.
+        self.pi.set_mode(self.GPIO, pigpio.INPUT)
+        # IR RX connected to this GPIO.
 
-        pi.set_glitch_filter(self.GPIO, self.GLITCH)  # Ignore glitches.
+        self.pi.set_glitch_filter(self.GPIO, self.GLITCH)  # Ignore glitches.
 
-        cb = pi.callback(self.GPIO, pigpio.EITHER_EDGE, self.cbf)
+        cb = self.pi.callback(self.GPIO, pigpio.EITHER_EDGE, self.cbf)
 
         # Process each id
 
@@ -480,8 +481,8 @@ class IRRP3:
             else:  # No confirm.
                 records[arg] = self.code[:]
 
-        pi.set_glitch_filter(self.GPIO, 0)  # Cancel glitch filter.
-        pi.set_watchdog(self.GPIO, 0)  # Cancel watchdog.
+        self.pi.set_glitch_filter(self.GPIO, 0)  # Cancel glitch filter.
+        self.pi.set_watchdog(self.GPIO, 0)  # Cancel watchdog.
 
         self.tidy(records)
 
@@ -492,7 +493,7 @@ class IRRP3:
         f.close()
 
     @pigpio_for_rcd_ply
-    def playback(self, pi, identification):
+    def playback(self, identification):
         try:
             f = open(self.FILE, "r")
         except FileNotFoundError:
@@ -503,9 +504,10 @@ class IRRP3:
 
         f.close()
 
-        pi.set_mode(self.GPIO, pigpio.OUTPUT)  # IR TX connected to this GPIO.
+        self.pi.set_mode(self.GPIO, pigpio.OUTPUT)
+        # IR TX connected to this GPIO.
 
-        pi.wave_add_new()
+        self.pi.wave_add_new()
 
         emit_time = time.time()
 
@@ -528,14 +530,14 @@ class IRRP3:
                     ci = self.code[i]
                     if i & 1:  # Space
                         if ci not in spaces_wid:
-                            pi.wave_add_generic([pigpio.pulse(0, 0, ci)])
-                            spaces_wid[ci] = pi.wave_create()
+                            self.pi.wave_add_generic([pigpio.pulse(0, 0, ci)])
+                            spaces_wid[ci] = self.pi.wave_create()
                         wave[i] = spaces_wid[ci]
                     else:  # Mark
                         if ci not in marks_wid:
                             wf = self.carrier(self.GPIO, self.FREQ, ci)
-                            pi.wave_add_generic(wf)
-                            marks_wid[ci] = pi.wave_create()
+                            self.pi.wave_add_generic(wf)
+                            marks_wid[ci] = self.pi.wave_create()
                         wave[i] = marks_wid[ci]
 
                 delay = emit_time - time.time()
@@ -543,23 +545,23 @@ class IRRP3:
                 if delay > 0.0:
                     time.sleep(delay)
 
-                pi.wave_chain(wave)
+                self.pi.wave_chain(wave)
 
                 if self.VERBOSE:
                     print("key " + arg)
 
-                while pi.wave_tx_busy():
+                while self.pi.wave_tx_busy():
                     time.sleep(0.002)
 
                 emit_time = time.time() + self.GAP_S
 
                 for i in marks_wid:
-                    pi.wave_delete(marks_wid[i])
+                    self.pi.wave_delete(marks_wid[i])
 
                 marks_wid = {}
 
                 for i in spaces_wid:
-                    pi.wave_delete(spaces_wid[i])
+                    self.pi.wave_delete(spaces_wid[i])
 
                 spaces_wid = {}
             else:
