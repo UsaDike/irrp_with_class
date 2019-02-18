@@ -575,6 +575,51 @@ class IRRP:
             else:
                 print("Id {} not found".format(arg))
 
+    @pigpio_for_rcd_ply
+    def receive_daemon(self):
+        try:
+            f = open(self.FILE, "r")
+            records = json.load(f)
+            f.close()
+        except FileNotFoundError:
+            records = {}
+
+        self.pi.set_mode(self.GPIO, pigpio.INPUT)
+        # IR RX connected to this GPIO.
+
+        self.pi.set_glitch_filter(self.GPIO, self.GLITCH)  # Ignore glitches.
+
+        cb = self.pi.callback(self.GPIO, pigpio.EITHER_EDGE, self.cbf)
+
+        print("Receive daemon")
+        #dbg_counter = 0
+        while True:
+            #print("Waiting for input " + str(dbg_counter))
+            #dbg_counter = dbg_counter + 1
+            self.code = []
+            self.fetching_code = True
+            while self.fetching_code:
+                time.sleep(0.1)
+            #print("Okay")
+            time.sleep(0.5)
+
+            #print("[Debug] recorded:")
+            #print(self.code[:])
+            has_the_same = False
+            for arg in records:
+                #print("Comparing with " + arg)
+                #print("[Debug] comaring with:")
+                #print(records[arg])
+                the_same = self.compare(self.code[:], records[arg])
+                if the_same:
+                    print("Received code is " + arg)
+                    has_the_same = True
+            if has_the_same == False:
+                print("Not matched with known code..")
+
+        self.pi.set_glitch_filter(self.GPIO, 0)  # Cancel glitch filter.
+        self.pi.set_watchdog(self.GPIO, 0)  # Cancel watchdog.
+
 
 if __name__ == "__main__":
     irrp = IRRP(gpio=None, filename=None)
